@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace arcf
 {
-    public class ArcfArchiver
+    public class ArcfArchiver : IDisposable
     {
         public ArcfWriter ArcfWriter
         {
@@ -14,6 +14,8 @@ namespace arcf
         }
 
         private readonly ArcfWriter _arcfWriter;
+
+        private bool isDisposed = false;
 
         public ArcfArchiver(Stream stream)
         {
@@ -35,8 +37,15 @@ namespace arcf
 
         public void AddFile(FileInfo file, string toRelativePath)
         {
+            if (isDisposed)
+                throw new Exception("[ArcfArchiver] ArcfArchiver has been disposed!");
+
             if (!file.Exists)
-                throw new FileNotFoundException("File does not exist!", file.FullName);
+                throw new FileNotFoundException("[ArcfArchiver] File does not exist!", file.FullName);
+
+#if DEBUG
+            Console.WriteLine("[ArcfArchiver] Adding file " + file.Name + " to: " + toRelativePath);
+#endif
 
             FileStream fileStream = file.OpenRead();
             _arcfWriter.AddStream(fileStream, toRelativePath);
@@ -63,8 +72,13 @@ namespace arcf
 
         public void AddDirectory(DirectoryInfo directory, string toRelativePath, bool recursive = true)
         {
+            if (isDisposed)
+                throw new Exception("[ArcfArchiver] ArcfArchiver has been disposed!");
+
             if (!directory.Exists)
-                throw new DirectoryNotFoundException("Directory (" + directory.FullName + ") does not exist!");
+                throw new DirectoryNotFoundException("[ArcfArchiver] Directory (" + directory.FullName + ") does not exist!");
+
+            Console.WriteLine("[ArcfArchiver] Adding directory " + directory.Name + " to: " + toRelativePath);
 
             _arcfWriter.AddRelativeDirectoryPath(toRelativePath);
 
@@ -100,5 +114,15 @@ namespace arcf
         }
 
         #endregion
+
+        public void Dispose()
+        {
+            if (!isDisposed)
+                _arcfWriter.Dispose();
+
+            isDisposed = true;
+
+            GC.SuppressFinalize(this);
+        }
     }
 }
