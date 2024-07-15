@@ -243,8 +243,6 @@ namespace arcfFileArchiver
 
             Console.WriteLine("[Archive] Starting archive...\n");
 
-            bool startedArchiveOutput = false;
-
             try
             {
                 Console.WriteLine("[Archive] Adding files & directories...\n");
@@ -261,7 +259,6 @@ namespace arcfFileArchiver
 
                 Console.WriteLine($"[Archive] Writing to: {outputPath}\n");
 
-                startedArchiveOutput = true;
                 arcfArchiver.Archive();
             }
             catch (Exception ex)
@@ -272,14 +269,15 @@ namespace arcfFileArchiver
 
                 arcfArchiver.Dispose();
 
-                //if started archive output, get rid of possibly corrupted file
-                if (startedArchiveOutput && File.Exists(outputPath))
+                //get rid of possibly corrupted file
+                if (File.Exists(outputPath))
                 {
                     Console.WriteLine("[Archive] Deleting possibly corrupted archive file.\n");
                     File.Delete(outputPath);
                 }
 
                 Console.WriteLine("[Archive] Finished with an exception.\n");
+                return;
             }
 
             Console.WriteLine("[Archive] Disposing ArcfArchiver...\n");
