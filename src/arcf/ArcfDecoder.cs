@@ -31,6 +31,21 @@
             get => _stream;
         }
 
+        public long ArchiveSizeBytes
+        {
+            get => _archiveSizeBytes;
+        }
+
+        public int NumFiles
+        {
+            get => _numFiles;
+        }
+
+        public int NumDirectories
+        {
+            get => _numDirectories;
+        }
+
         private readonly Stream _stream;
         private readonly BinaryReader reader;
 
@@ -39,6 +54,9 @@
         // # Data
         private uint arcfVersion = 0;
         private readonly ArcfDirectory arcfRoot = new("arcfRoot");
+        private long _archiveSizeBytes = 0L;
+        private int _numFiles = 0;
+        private int _numDirectories = 0;
 
         private readonly Stack<ArcfDirectory> directoryStack = new();
 
@@ -78,6 +96,8 @@
                     //Start directory
                     case "\\d":
                         {
+                            _numDirectories++;
+
                             string newDirectoryName = reader.ReadString();
 
                             ArcfDirectory newDirectory = new(newDirectoryName);
@@ -101,16 +121,18 @@
                     //Start file
                     case "\\f":
                         {
+                            _numFiles++;
+
                             string fileName = reader.ReadString();
+
                             long dataLength = reader.ReadInt64();
+                            _archiveSizeBytes += dataLength;
+
                             long startDataPosition = _stream.Position;
 
-                            //TODO: _stream.Position += dataLength; currently unused because data-test is written instead
                             //Skip data
                             _stream.Position += dataLength;
-                            //reader.ReadString(); //data-test string: ignore
 
-                            //TODO: replace last parameter with dataLength when file data is actually being written
                             ArcfFile file = new(fileName, startDataPosition, dataLength);
                             currentDirectory.Files.Add(file);
 

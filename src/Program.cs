@@ -1,5 +1,7 @@
 ﻿using arcf;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Compression;
 
 namespace arcfFileArchiver
 {
@@ -46,12 +48,25 @@ namespace arcfFileArchiver
             switch (command)
             {
                 case "read":
-                    Console.WriteLine(command);
+                    {
+                        int level = 1;
 
-                    foreach (string param in parameters)
-                        Console.WriteLine(param);
+                        switch (parameters.Length)
+                        {
+                            case 0:
+                                throw new ArgumentException("[Read] No archive file path given!");
+                            case 1:
+                                level = 1;
+                                break;
+                            default:
+                                level = int.Parse(parameters[1]);
+                                break;
+                        }
 
-                    break;
+                        ReadCommand(parameters[0], level);
+
+                        break;
+                    }
                 case "archive":
                     {
                         switch(parameters.Length)
@@ -93,8 +108,8 @@ namespace arcfFileArchiver
                     }
                 case "help":
                     Console.WriteLine("| arcf File Archiver - Help |\n");
-                    Console.WriteLine("Read [archive file path] - displays file names & directories in archive file");
-                    Console.WriteLine("Archive [output directory] [directories/files to archive] .. - archive files & directories");
+                    Console.WriteLine("Read [archive file path] [Level 1-3] - reads archive file, Level 1: Archive info only, Level 2: Info + Directories, Level 3: Info + Directories + Files");
+                    Console.WriteLine("Archive [output file path] [directories/files to archive] .. - archive files & directories");
                     Console.WriteLine("Dearchive [archive file path] [output directory] - dearchive archive file");
                     Console.WriteLine("Help - shows this menu");
                     Console.WriteLine("Quit - quit the program");
@@ -178,9 +193,75 @@ namespace arcfFileArchiver
                 return $"{bytes / TB_BYTES} tb";
         }
 
-        private static void ReadCommand(string outputPath, IEnumerable<string> compressPaths)
+        private static void ReadCommand(string archivePath, int level = 1)
         {
+            if (level < 1 || level > 3)
+                throw new ArgumentOutOfRangeException(nameof(level));
 
+            Console.WriteLine($"[Read] Checking if ARCHIVE FILE PATH: {archivePath} exists...");
+            if (!File.Exists(archivePath))
+            {
+                throw new ArgumentException("[Dearchive] File/Directory does not exist!: {path}");
+            }
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            Console.WriteLine($"[Read] Opening {archivePath} for reading...");
+            ArcfDecoder arcfDecoder = new(File.OpenRead(archivePath));
+
+            Console.WriteLine($"\n|| ARCHIVE INFO ||\n");
+            Console.WriteLine($"{arcfDecoder.NumFiles} files");
+            Console.WriteLine($"{arcfDecoder.NumDirectories} directories");
+            Console.WriteLine($"{TextFormatBytes(arcfDecoder.ArchiveSizeBytes)} | {arcfDecoder.ArchiveSizeBytes} bytes");
+
+            if (level >= 2)
+            {
+                void WriteDirectoryHierarchy(ArcfDirectory directory, int hierarchyLevel = 0)
+                {
+                    string tab = "";
+                    for (int i = 0; i < hierarchyLevel; i++)
+                        tab += "    ";
+
+                    Console.WriteLine($"{tab}> {directory.Name}");
+
+                    foreach (ArcfDirectory subdirectory in directory.Subdirectories)
+                    {
+                        WriteDirectoryHierarchy(subdirectory, hierarchyLevel + 1);
+                    }
+
+                    if (level == 3)
+                    {
+                        foreach (ArcfFile file in directory.Files)
+                        {
+                            Console.WriteLine($"{tab}   - {file.Name}");
+                        }
+                    }
+                }
+
+                Console.WriteLine($"\n|| ARCHIVE HIERARCHY ||\n");
+
+                foreach (ArcfDirectory directory in arcfDecoder.GetRootDirectories())
+                {
+                    WriteDirectoryHierarchy(directory);
+                }
+
+                if (level == 3)
+                {
+                    foreach (ArcfFile file in arcfDecoder.GetRootFiles())
+                    {
+                        Console.WriteLine($"- {file.Name}");
+                    }
+                }
+            }
+
+            Console.WriteLine(" ");
+            Console.WriteLine("[Read] Disposing ArcfDecoder...\n");
+
+            arcfDecoder.Dispose();
+
+            stopwatch.Stop();
+
+            Console.WriteLine($"[Read] Finished successfully. ({stopwatch.Elapsed})\n");
         }
 
         private static void ArchiveCommand(string outputPath, IEnumerable<string> compressPaths) 
@@ -239,9 +320,9 @@ namespace arcfFileArchiver
             }
 
             Console.WriteLine($"\n|| ARCHIVE INFO ||\n");
-            Console.WriteLine($"Archiving {fileCount} files");
-            Console.WriteLine($"Archiving {directoryCount} directories");
-            Console.WriteLine($"Archiving {TextFormatBytes(totalBytesToArchive)}");
+            Console.WriteLine($"{fileCount} files");
+            Console.WriteLine($"{directoryCount} directories");
+            Console.WriteLine($"{TextFormatBytes(totalBytesToArchive)}");
             Console.WriteLine($"\nContinue? Y/N\n");
 
             string? answer = Console.ReadLine();

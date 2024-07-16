@@ -38,9 +38,8 @@
         private static void ExtractDirectory(ArcfDirectory directory, ArcfDecoder arcfReader, string outputPath)
         {
             string newPath = Path.TrimEndingDirectorySeparator(outputPath) + @"\" + directory.Name;
-#if DEBUG
+
             Console.WriteLine($"[ArcfDearchiver] Extracting DIRECTORY {directory.Name} to: {newPath}");
-#endif
 
             //Create directory if it doesn't exist
             if (!Directory.Exists(newPath))
