@@ -1,15 +1,8 @@
 ﻿namespace arcf
 {
     //Class used for writing to streams made for creating arcf files
-    public class ArcfWriter : IDisposable
+    public class ArcfEncoder : IDisposable
     {
-        public Stream OutputStream
-        {
-            get => _outputStream;
-        }
-
-        private readonly Stream _outputStream;
-
         private readonly List<string> relativeDirectoryPaths = new();
 
         /// <summary>
@@ -19,21 +12,18 @@
 
         private bool isDisposed = false;
 
-        public ArcfWriter(Stream stream)
+        public ArcfEncoder()
         {
-            _outputStream = stream;
-
-            if (!_outputStream.CanWrite)
-                throw new Exception("[ArcfWriter] Can not write to ArcfWriter's output stream!");
+            
         }
 
         public void AddStream(Stream stream, string toRelativePath)
         {
             if (isDisposed)
-                throw new Exception("[ArcfWriter] ArcfWriter has been disposed!");
+                throw new Exception("[ArcfEncoder] ArcfEncoder has been disposed!");
 
             if (!stream.CanRead)
-                throw new Exception("[ArcfWriter] Can not read stream!");
+                throw new Exception("[ArcfEncoder] Can not read stream!");
 
             //add relative directory if necessary
 
@@ -46,7 +36,7 @@
             files.Add(toRelativePath, stream);
 
 #if DEBUG
-            Console.WriteLine("[ArcfWriter] Added stream to: " + toRelativePath);
+            Console.WriteLine("[ArcfEncoder] Added stream to: " + toRelativePath);
 #endif
 
         }
@@ -60,7 +50,7 @@
                 {
                     relativeDirectoryPaths.Remove(path);
 #if DEBUG
-                    Console.WriteLine("[ArcfWriter] Removed higher-level relative directory: " + Path.TrimEndingDirectorySeparator(path));
+                    Console.WriteLine("[ArcfEncoder] Removed higher-level relative directory: " + Path.TrimEndingDirectorySeparator(path));
 #endif
                     break;
                 }
@@ -68,7 +58,7 @@
 
             relativeDirectoryPaths.Add(Path.TrimEndingDirectorySeparator(relativeDirectoryPath));
 #if DEBUG
-            Console.WriteLine("[ArcfWriter] Added relative directory: " + Path.TrimEndingDirectorySeparator(relativeDirectoryPath));
+            Console.WriteLine("[ArcfEncoder] Added relative directory: " + Path.TrimEndingDirectorySeparator(relativeDirectoryPath));
 #endif
         }
 
@@ -77,23 +67,23 @@
         /// </summary>
         /// <exception cref="Exception"></exception>
         /// <exception cref="NotImplementedException"></exception>
-        public void WriteTo()
+        public void Encode(Stream outputStream)
         {
             if (isDisposed)
-                throw new Exception("[ArcfWriter] ArcfWriter has been disposed!");
+                throw new Exception("[ArcfEncoder] ArcfEncoder has been disposed!");
 
-            if (!_outputStream.CanWrite)
-                throw new Exception("[ArcfWriter] Can not write to ArcfWriter's stream!");
+            if (!outputStream.CanWrite)
+                throw new Exception("[ArcfEncoder] Can not write to output stream!");
 
             //For testing purposes
 #if DEBUG
             Console.WriteLine("[ArcfWriter] Opening output stream writer - Test");
 #endif
 
-            StreamWriter sw = new(_outputStream);
+            StreamWriter sw = new(outputStream);
 
 #if DEBUG
-            Console.WriteLine("[ArcfWriter] Writing relative directories - Test");
+            Console.WriteLine("[ArcfEncoder] Writing relative directories - Test");
 #endif
 
             sw.WriteLine("ARCF_EXT_VTEST");
@@ -103,15 +93,14 @@
             foreach (string directoryPath in relativeDirectoryPaths)
             {
 #if DEBUG
-                Console.WriteLine($"[ArcfWriter] Writing relative directory: {directoryPath} - Test");
+                Console.WriteLine($"[ArcfEncoder] Writing relative directory: {directoryPath} - Test");
 #endif
 
                 sw.WriteLine(directoryPath);
-
             }
 
 #if DEBUG
-            Console.WriteLine("[ArcfWriter] Writing files (paths only) - Test");
+            Console.WriteLine("[ArcfEncoder] Writing files (paths only) - Test");
 #endif
 
             sw.WriteLine("\n|| Files ||\n");
@@ -122,24 +111,21 @@
             foreach (string filePath in files.Keys)
             {
 #if DEBUG
-                Console.WriteLine($"[ArcfWriter] Writing file path: {filePath} ({filesWritten + 1}/{fileCount}) - Test");
+                Console.WriteLine($"[ArcfEncoder] Writing file path: {filePath} ({filesWritten + 1}/{fileCount}) - Test");
 #endif
 
                 sw.WriteLine(filePath);
 
                 filesWritten++;
-
             }
 
-            Console.WriteLine($"[ArcfWriter] Finished writing to stream");
+            Console.WriteLine($"[ArcfEncoder] Finished writing to stream");
         }
 
         public void Dispose()
         {
             if (!isDisposed)
             {
-                _outputStream.Dispose();
-
                 foreach (Stream stream in files.Values)
                     stream.Dispose();
 

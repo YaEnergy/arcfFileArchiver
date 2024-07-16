@@ -253,7 +253,8 @@ namespace arcfFileArchiver
 
             Console.WriteLine($"[Archive] Opening {outputPath} for writing...");
 
-            ArcfArchiver arcfArchiver = new(File.Create(outputPath));
+            FileStream fileStream = File.Create(outputPath);
+            ArcfArchiver arcfArchiver = new();
 
             Console.WriteLine("[Archive] Starting archive...\n");
 
@@ -275,7 +276,7 @@ namespace arcfFileArchiver
 
                 Console.WriteLine($"[Archive] Writing to: {outputPath}\n");
 
-                arcfArchiver.Archive();
+                arcfArchiver.Archive(fileStream);
             }
             catch (Exception ex)
             {
@@ -284,6 +285,7 @@ namespace arcfFileArchiver
                 Console.WriteLine("[Archive] Disposing ArcfArchiver...\n");
 
                 arcfArchiver.Dispose();
+                fileStream.Dispose();
 
                 //get rid of possibly corrupted file
                 if (File.Exists(outputPath))
@@ -301,6 +303,7 @@ namespace arcfFileArchiver
             Console.WriteLine("[Archive] Disposing ArcfArchiver...\n");
 
             arcfArchiver.Dispose();
+            fileStream.Dispose();
 
             stopwatch.Stop();
 

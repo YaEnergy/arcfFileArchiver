@@ -8,30 +8,30 @@ namespace arcf
 {
     public class ArcfArchiver : IDisposable
     {
-        public ArcfWriter ArcfWriter
+        public ArcfEncoder ArcfEncoder
         {
-            get => _arcfWriter;
+            get => _arcfEncoder;
         }
 
-        private readonly ArcfWriter _arcfWriter;
+        private readonly ArcfEncoder _arcfEncoder;
 
         private bool isDisposed = false;
 
-        public ArcfArchiver(Stream stream)
+        public ArcfArchiver()
         {
-            _arcfWriter = new(stream);
+            _arcfEncoder = new();
         }
 
-        public ArcfArchiver(ArcfWriter arcfWriter)
+        public ArcfArchiver(ArcfEncoder arcfWriter)
         {
-            _arcfWriter = arcfWriter;
+            _arcfEncoder = arcfWriter;
         }
 
-        public static void Archive(ArcfWriter writer)
-            => writer.WriteTo();
+        public static void Archive(Stream stream, ArcfEncoder encoder)
+            => encoder.Encode(stream);
 
-        public void Archive()
-            => Archive(_arcfWriter);
+        public void Archive(Stream stream)
+            => Archive(stream, _arcfEncoder);
 
         #region Adding files
 
@@ -48,7 +48,7 @@ namespace arcf
 #endif
 
             FileStream fileStream = file.OpenRead();
-            _arcfWriter.AddStream(fileStream, toRelativePath);
+            _arcfEncoder.AddStream(fileStream, toRelativePath);
         }
 
         public void AddFile(string filePath, string toRelativePath)
@@ -80,7 +80,7 @@ namespace arcf
 
             Console.WriteLine("[ArcfArchiver] Adding directory " + directory.Name + " to: " + toRelativePath);
 
-            _arcfWriter.AddRelativeDirectoryPath(toRelativePath);
+            _arcfEncoder.AddRelativeDirectoryPath(toRelativePath);
 
             //Add files
             foreach (FileInfo file in directory.GetFiles())
@@ -118,7 +118,7 @@ namespace arcf
         public void Dispose()
         {
             if (!isDisposed)
-                _arcfWriter.Dispose();
+                _arcfEncoder.Dispose();
 
             isDisposed = true;
 
