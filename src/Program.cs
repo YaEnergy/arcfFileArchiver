@@ -254,7 +254,7 @@ namespace arcfFileArchiver
             Console.WriteLine($"[Archive] Opening {outputPath} for writing...");
 
             FileStream fileStream = File.Create(outputPath);
-            ArcfArchiver arcfArchiver = new();
+            ArcfArchiver arcfArchiver = new(fileStream);
 
             Console.WriteLine("[Archive] Starting archive...\n");
 
@@ -267,16 +267,16 @@ namespace arcfFileArchiver
                 foreach (string path in compressPaths)
                 {
                     if (File.Exists(path))
-                        arcfArchiver.AddTopLevelFile(path);
+                        arcfArchiver.AddFile(path);
                     else if (Directory.Exists(path))
-                        arcfArchiver.AddTopLevelDirectory(path);
+                        arcfArchiver.AddDirectory(path);
                     else
                         throw new ArgumentException($"[Archive] File/Directory does not exist!: {path}");
                 }
 
-                Console.WriteLine($"[Archive] Writing to: {outputPath}\n");
+                Console.WriteLine($"[Archive] Finishing archive...\n");
 
-                arcfArchiver.Archive(fileStream);
+                arcfArchiver.Archive();
             }
             catch (Exception ex)
             {
