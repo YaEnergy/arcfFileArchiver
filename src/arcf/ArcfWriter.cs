@@ -53,6 +53,19 @@
 
         public void AddRelativeDirectoryPath(string relativeDirectoryPath)
         {
+            //Remove higher-level directories, only keep the lowest-level directories as they contain the higher-level directory paths aswell (C:\abc\def contains C:\abc)
+            foreach (string path in relativeDirectoryPaths)
+            {
+                if (relativeDirectoryPath.StartsWith(path))
+                {
+                    relativeDirectoryPaths.Remove(path);
+#if DEBUG
+                    Console.WriteLine("[ArcfWriter] Removed higher-level relative directory: " + Path.TrimEndingDirectorySeparator(path));
+#endif
+                    break;
+                }
+            }
+
             relativeDirectoryPaths.Add(Path.TrimEndingDirectorySeparator(relativeDirectoryPath));
 #if DEBUG
             Console.WriteLine("[ArcfWriter] Added relative directory: " + Path.TrimEndingDirectorySeparator(relativeDirectoryPath));
@@ -118,7 +131,7 @@
 
             }
 
-            //throw new NotImplementedException();
+            Console.WriteLine($"[ArcfWriter] Finished writing to stream");
         }
 
         public void Dispose()

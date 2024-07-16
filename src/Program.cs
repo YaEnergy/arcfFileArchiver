@@ -1,4 +1,5 @@
 ﻿using arcf;
+using System.Diagnostics;
 
 namespace arcfFileArchiver
 {
@@ -52,31 +53,44 @@ namespace arcfFileArchiver
 
                     break;
                 case "archive":
-
-                    switch(parameters.Length)
                     {
-                        case 0:
-                            throw new ArgumentException("[Archive] No output file path given!");
-                        case 1:
-                            throw new ArgumentException("[Archive] No files/directories to archive given!");
-                        default:
-                            break;
+                        switch(parameters.Length)
+                        {
+                            case 0:
+                                throw new ArgumentException("[Archive] No output file path given!");
+                            case 1:
+                                throw new ArgumentException("[Archive] No files/directories to archive given!");
+                            default:
+                                break;
+                        }
+
+                        string outputPath = parameters[0];
+                        List<string> paths = parameters.ToList();
+                        paths.RemoveAt(0);
+
+                        ArchiveCommand(outputPath, paths);
+
+                        break;
                     }
-
-                    string outputPath = parameters[0];
-                    List<string> paths = parameters.ToList();
-                    paths.RemoveAt(0);
-
-                    ArchiveCommand(outputPath, paths);
-
-                    break;
                 case "dearchive":
-                    Console.WriteLine(command);
+                    {
+                        switch (parameters.Length)
+                        {
+                            case 0:
+                                throw new ArgumentException("[Archive] No archive file path given!");
+                            case 1:
+                                throw new ArgumentException("[Archive] No output path given!");
+                            default:
+                                break;
+                        }
 
-                    foreach (string param in parameters)
-                        Console.WriteLine(param);
+                        string archiveFilePath = parameters[0];
+                        string outputPath = parameters[1];
 
-                    break;
+                        DearchiveCommand(archiveFilePath, outputPath);
+
+                        break;
+                    }
                 case "help":
                     Console.WriteLine("| arcf File Archiver - Help |\n");
                     Console.WriteLine("Read [archive file path] - displays file names & directories in archive file");
@@ -198,7 +212,7 @@ namespace arcfFileArchiver
             foreach (string path in compressPaths)
             {
                 if (!File.Exists(path) && !Directory.Exists(path))
-                    throw new ArgumentException($"File/Directory does not exist!: {path}");
+                    throw new ArgumentException($"[Archive] File/Directory does not exist!: {path}");
                 else if (File.Exists(path))
                 {
                     FileInfo file = new(path);
@@ -243,6 +257,8 @@ namespace arcfFileArchiver
 
             Console.WriteLine("[Archive] Starting archive...\n");
 
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
             try
             {
                 Console.WriteLine("[Archive] Adding files & directories...\n");
@@ -276,7 +292,9 @@ namespace arcfFileArchiver
                     File.Delete(outputPath);
                 }
 
-                Console.WriteLine("[Archive] Finished with an exception.\n");
+                stopwatch.Stop();
+
+                Console.WriteLine($"[Archive] Finished with an exception. ({stopwatch.Elapsed})\n");
                 return;
             }
 
@@ -284,12 +302,94 @@ namespace arcfFileArchiver
 
             arcfArchiver.Dispose();
 
-            Console.WriteLine("[Archive] Finished successfully.\n");
+            stopwatch.Stop();
+
+            Console.WriteLine($"[Archive] Finished successfully. ({stopwatch.Elapsed})\n");
         }
 
-        private static void DearchiveCommand(IEnumerable<string> decompressPaths, string outputPath)
+        private static void DearchiveCommand(string decompressPath, string outputPath)
         {
+            Console.WriteLine($"[Dearchive] Checking if ARCHIVE FILE PATH: {decompressPath} exists...");
+            if (!File.Exists(decompressPath))
+            {
+                throw new ArgumentException("[Dearchive] File/Directory does not exist!: {path}");
+            }
 
+            Console.WriteLine($"[Dearchive] Opening {decompressPath} for reading...");
+            ArcfReader arcfReader = new(File.OpenRead(decompressPath));
+
+            //TODO: Write some info about the archive file here
+
+            Console.WriteLine("[Dearchive] Start dearchival? Y/N");
+            string? dearchiveAnswer = Console.ReadLine();
+            if (dearchiveAnswer == null || dearchiveAnswer.ToLower() != "y")
+            {
+                Console.WriteLine("[Dearchive] Cancelled dearchival.");
+                return;
+            }
+
+            Console.WriteLine($"[Dearchive] Checking if {outputPath} exists...");
+
+            if (Directory.Exists(outputPath))
+            {
+                Console.WriteLine($"[Dearchive] OUTPUT DIRECTORY: {outputPath} - exists!");
+
+                DirectoryInfo outputDirectoryInfo = new(outputPath);
+                if (outputDirectoryInfo.GetFileSystemInfos().Length > 0)
+                {
+                    Console.WriteLine($"[Warning] [Dearchive] DIRECTORY: {outputPath} already contains files/directories, and will overwrite them.\nContinue? Y/N");
+                    
+                    string? fileAnswer = Console.ReadLine();
+                    if (fileAnswer == null || fileAnswer.ToLower() != "y")
+                    {
+                        Console.WriteLine("[Dearchive] Cancelled dearchival.");
+                        return;
+                    }
+                }
+            }
+            else
+            { 
+                Console.WriteLine($"[Dearchive] Creating OUTPUT DIRECTORY: {outputPath}");
+                Directory.CreateDirectory(outputPath);
+            }
+
+            ArcfDearchiver arcfDearchiver = new(arcfReader);
+
+            Console.WriteLine($"[Dearchive] Starting dearchival to DIRECTORY: {outputPath}...\n");
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                arcfDearchiver.Dearchive(outputPath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] [Dearchive] {ex.Message})");
+
+                Console.WriteLine("[Derchive] Disposing ArcfDearchiver...\n");
+
+                arcfDearchiver.Dispose();
+
+                //get rid of possibly corrupted file
+                /*if (File.Exists(outputPath))
+                {
+                    Console.WriteLine("[Archive] Deleting possibly corrupted archive file.\n");
+                    File.Delete(outputPath);
+                }*/
+
+                stopwatch.Stop();
+
+                Console.WriteLine($"[Dearchive] Finished with an exception. ({stopwatch.Elapsed})\n");
+                return;
+            }
+
+            Console.WriteLine($"[Dearchive] Disposing ArcfDearchiver...");
+            arcfDearchiver.Dispose();
+
+            stopwatch.Stop();
+
+            Console.WriteLine($"[Dearchive] Finished successfully. ({stopwatch.Elapsed})\n");
         }
     }
 }
