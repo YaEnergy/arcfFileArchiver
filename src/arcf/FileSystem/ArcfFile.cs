@@ -1,20 +1,17 @@
 ﻿namespace arcf
 {
-    public class ArcfFile
+    public struct ArcfFile
     {
         public string Name;
 
-        public Stream? Stream = null;
+        public long StartDataPosition = 0;
+        public long DataLength = 0;
 
-        public ArcfFile(string name)
+        public ArcfFile(string name, long startDataPosition, long dataLength)
         {
             Name = name;
-        }
-
-        public ArcfFile(string name, Stream stream)
-        {
-            Name = name;
-            Stream = stream;
+            StartDataPosition = startDataPosition;
+            DataLength = dataLength;
         }
     }
 }

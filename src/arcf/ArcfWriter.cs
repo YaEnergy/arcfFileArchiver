@@ -23,8 +23,6 @@ namespace arcf
         // long length - length of the data in bytes
         // data
 
-        // \ef - end file
-
         // \ed - end directory
 
         // \eaf - end archive file
@@ -76,9 +74,6 @@ namespace arcf
             // data
             writer.Write("data-test");
             //stream.CopyTo(_outstream);
-
-            //End file
-            writer.Write("\\ef");
 
             Console.WriteLine($"[ArcfWriter] Writed FILE {name} to {CurrentDirectory}");
         }
