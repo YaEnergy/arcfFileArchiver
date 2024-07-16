@@ -2,7 +2,7 @@
 {
     //TODO: ArcfReader & ArcfWriter act more like Decoders & Encoders rather than Readers & Writers, change their name
 
-    public class ArcfReader : IDisposable
+    public class ArcfDecoder : IDisposable
     {
         public Stream Stream
         {
@@ -11,7 +11,7 @@
 
         private readonly Stream _stream;
 
-        public ArcfReader(Stream stream)
+        public ArcfDecoder(Stream stream)
         {
             _stream = stream;
         }

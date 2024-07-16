@@ -319,7 +319,7 @@ namespace arcfFileArchiver
             }
 
             Console.WriteLine($"[Dearchive] Opening {decompressPath} for reading...");
-            ArcfReader arcfReader = new(File.OpenRead(decompressPath));
+            ArcfDecoder arcfReader = new(File.OpenRead(decompressPath));
 
             //TODO: Write some info about the archive file here
 
@@ -368,7 +368,7 @@ namespace arcfFileArchiver
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] [Dearchive] {ex.Message})");
+                Console.WriteLine($"[ERROR] [Dearchive] {ex.Message}");
 
                 Console.WriteLine("[Derchive] Disposing ArcfDearchiver...\n");
 

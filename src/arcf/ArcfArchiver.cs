@@ -48,7 +48,7 @@ namespace arcf
 #endif
 
             FileStream fileStream = file.OpenRead();
-            _arcfEncoder.AddStream(fileStream, toRelativePath);
+            _arcfEncoder.AddFile(new(file.Name, fileStream), toRelativePath);
         }
 
         public void AddFile(string filePath, string toRelativePath)
@@ -58,7 +58,18 @@ namespace arcf
 
         public void AddTopLevelFile(FileInfo file)
         {
-            AddFile(file, file.Name);
+            if (isDisposed)
+                throw new Exception("[ArcfArchiver] ArcfArchiver has been disposed!");
+
+            if (!file.Exists)
+                throw new FileNotFoundException("[ArcfArchiver] File does not exist!", file.FullName);
+
+#if DEBUG
+            Console.WriteLine("[ArcfArchiver] Adding file " + file.Name + " to root");
+#endif
+
+            FileStream fileStream = file.OpenRead();
+            _arcfEncoder.AddFile(new(file.Name, fileStream));
         }
 
         public void AddTopLevelFile(string filePath)
@@ -78,14 +89,16 @@ namespace arcf
             if (!directory.Exists)
                 throw new DirectoryNotFoundException("[ArcfArchiver] Directory (" + directory.FullName + ") does not exist!");
 
-            Console.WriteLine("[ArcfArchiver] Adding directory " + directory.Name + " to: " + toRelativePath);
+            Console.WriteLine("[ArcfArchiver] Adding directory " + directory.FullName + " to: " + toRelativePath);
 
-            _arcfEncoder.AddRelativeDirectoryPath(toRelativePath);
+            //_arcfEncoder.AddRelativeDirectoryPath(toRelativePath);
+            //ArcfDirectory arcfDirectory = ArcfDirectory.FromPath(toRelativePath);
+            _arcfEncoder.AddRelativeDirectory(toRelativePath);
 
             //Add files
             foreach (FileInfo file in directory.GetFiles())
             {
-                AddFile(file, Path.TrimEndingDirectorySeparator(toRelativePath) + @"\" + file.Name);
+                AddFile(file, Path.TrimEndingDirectorySeparator(toRelativePath)); //+ @"\" + file.Name);
             }
 
             if (recursive)

@@ -1,14 +1,11 @@
-﻿namespace arcf
+﻿using System.IO;
+
+namespace arcf
 {
     //Class used for writing to streams made for creating arcf files
     public class ArcfEncoder : IDisposable
     {
-        private readonly List<string> relativeDirectoryPaths = new();
-
-        /// <summary>
-        /// Key is relative file path, value is stream
-        /// </summary>
-        private readonly Dictionary<string, Stream> files = new();
+        private readonly ArcfDirectory root = new("root");
 
         private bool isDisposed = false;
 
@@ -17,49 +14,111 @@
             
         }
 
-        public void AddStream(Stream stream, string toRelativePath)
+        public void AddFile(ArcfFile file, string directoryPath)
         {
             if (isDisposed)
                 throw new Exception("[ArcfEncoder] ArcfEncoder has been disposed!");
 
-            if (!stream.CanRead)
-                throw new Exception("[ArcfEncoder] Can not read stream!");
+            if (file.Stream == null || !file.Stream.CanRead)
+                throw new Exception("[ArcfEncoder] Encoder ArcfFile streams must not be null or non-readable!");
 
-            //add relative directory if necessary
-
-            string? relativeDirectory = Path.GetDirectoryName(toRelativePath);
-
-            if (relativeDirectory != null && !relativeDirectoryPaths.Contains(relativeDirectory))
-                AddRelativeDirectoryPath(relativeDirectory);
-
-            //add relative path and stream
-            files.Add(toRelativePath, stream);
+            //add relative root directory if necessary
+            ArcfDirectory encoderDirectory = AddRelativeDirectory(directoryPath);
+            encoderDirectory.Files.Add(file);
 
 #if DEBUG
-            Console.WriteLine("[ArcfEncoder] Added stream to: " + toRelativePath);
+            Console.WriteLine($"[ArcfEncoder] Added ArcfFile: {file.Name} to: {directoryPath}");
 #endif
 
         }
 
-        public void AddRelativeDirectoryPath(string relativeDirectoryPath)
+        public void AddFile(ArcfFile file)
         {
-            //Remove higher-level directories, only keep the lowest-level directories as they contain the higher-level directory paths aswell (C:\abc\def contains C:\abc)
-            foreach (string path in relativeDirectoryPaths)
-            {
-                if (relativeDirectoryPath.StartsWith(path))
-                {
-                    relativeDirectoryPaths.Remove(path);
+            root.Files.Add(file);
+
 #if DEBUG
-                    Console.WriteLine("[ArcfEncoder] Removed higher-level relative directory: " + Path.TrimEndingDirectorySeparator(path));
+            Console.WriteLine($"[ArcfEncoder] Added ArcfFile: {file.Name} to root");
 #endif
-                    break;
+
+        }
+
+        private ArcfDirectory? SearchForDirectory(string directoryPath)
+        {
+            string[] directoryNames = directoryPath.Split('\\');
+
+            if (directoryNames.Length == 0)
+                throw new Exception("No directory names in path");
+
+            ArcfDirectory result = root;
+
+            //Search for the directories with the same name in the same order
+            for (int i = 0; i < directoryNames.Length; i++)
+            {
+                //Search for the directory with the same name
+
+                bool found = false;
+                foreach (ArcfDirectory directory in result.Subdirectories)
+                {
+                    if (directory.Name == directoryNames[i])
+                    {
+                        result = directory;
+                        found = true;
+                        break;
+                    }
+                }
+
+                //Directory not found, doesn't exist
+                if (!found)
+                    return null;
+            }
+            
+            return result;
+        }
+
+        public ArcfDirectory AddRelativeDirectory(string directoryPath)
+        {
+            if (isDisposed)
+                throw new Exception("[ArcfEncoder] ArcfEncoder has been disposed!");
+
+            string[] directoryNames = directoryPath.Split('\\');
+
+            if (directoryNames.Length == 0)
+                throw new Exception("No directory names in path");
+
+            ArcfDirectory directory = root;
+
+            //Search for the directories with the same name in the same order
+            for (int i = 0; i < directoryNames.Length; i++)
+            {
+                //Search for the directory with the same name
+
+                bool found = false;
+                foreach (ArcfDirectory subdirectory in directory.Subdirectories)
+                {
+                    if (subdirectory.Name == directoryNames[i])
+                    {
+                        directory = subdirectory;
+                        found = true;
+                        break;
+                    }
+                }
+
+                //Directory not found, create
+                if (!found)
+                {
+
+                    ArcfDirectory newDirectory = new(directoryNames[i]);
+                    directory.Subdirectories.Add(newDirectory);
+
+#if DEBUG
+                    Console.WriteLine($"[ArcfEncoder] Added ArcfDirectory: {newDirectory.Name} to: {directory.Name}");
+#endif
+
+                    directory = newDirectory;
                 }
             }
 
-            relativeDirectoryPaths.Add(Path.TrimEndingDirectorySeparator(relativeDirectoryPath));
-#if DEBUG
-            Console.WriteLine("[ArcfEncoder] Added relative directory: " + Path.TrimEndingDirectorySeparator(relativeDirectoryPath));
-#endif
+            return directory;
         }
 
         /// <summary>
@@ -83,51 +142,81 @@
             StreamWriter sw = new(outputStream);
 
 #if DEBUG
-            Console.WriteLine("[ArcfEncoder] Writing relative directories - Test");
+            Console.WriteLine("[ArcfEncoder] Writing to stream...");
 #endif
 
-            sw.WriteLine("ARCF_EXT_VTEST");
-            sw.WriteLine("\n# This is test output!!\n");
-            sw.WriteLine("\n|| Relative directories ||\n");
+            sw.WriteLine("ARCF_EXT");
+            sw.WriteLine("V1_TEST");
 
-            foreach (string directoryPath in relativeDirectoryPaths)
+            void WriteDirectory(ArcfDirectory directory, int level = 0)
             {
+
+                string tab = "";
+
 #if DEBUG
-                Console.WriteLine($"[ArcfEncoder] Writing relative directory: {directoryPath} - Test");
+                for (int i = 0; i < level; i++)
+                    tab += "    ";
 #endif
 
-                sw.WriteLine(directoryPath);
+                sw.WriteLine(tab + directory.Name);
+
+                Console.WriteLine($"[ArcfEncoder] Writing ArcfDirectory: {directory.Name} subdirectories");
+
+                //Here begin the subdirectories of this directory
+                sw.WriteLine(tab + "\\sub");
+
+                foreach (ArcfDirectory subdirectory in directory.Subdirectories)
+                {
+                    WriteDirectory(subdirectory, level + 1);
+                }
+
+
+                Console.WriteLine($"[ArcfEncoder] Writing ArcfDirectory: {directory.Name} files");
+
+                //Here begin the files of this directory
+                sw.WriteLine(tab + "\\files");
+
+                foreach (ArcfFile file in directory.Files)
+                {
+#if DEBUG
+                    Console.WriteLine($"[ArcfEncoder] Writing ArcfFile: {file.Name}");
+#endif
+
+                    sw.WriteLine(tab + file.Name);
+
+                    //TODO: file data
+                }
+
+                //Directory finished
+                sw.WriteLine(tab + "\\parent");
             }
 
-#if DEBUG
-            Console.WriteLine("[ArcfEncoder] Writing files (paths only) - Test");
-#endif
+            WriteDirectory(root, 0);
 
-            sw.WriteLine("\n|| Files ||\n");
+            Console.WriteLine($"[ArcfEncoder] Finished writing ArcfFiles & ArcfDirectories");
 
-            int fileCount = files.Count;
-            int filesWritten = 0;
+            //File finished
+            sw.WriteLine("\\end");
 
-            foreach (string filePath in files.Keys)
-            {
-#if DEBUG
-                Console.WriteLine($"[ArcfEncoder] Writing file path: {filePath} ({filesWritten + 1}/{fileCount}) - Test");
-#endif
-
-                sw.WriteLine(filePath);
-
-                filesWritten++;
-            }
+            sw.Flush();
 
             Console.WriteLine($"[ArcfEncoder] Finished writing to stream");
+        }
+
+        public void DisposeArcfDirectory(ArcfDirectory directory)
+        {
+            foreach (ArcfFile file in directory.Files)
+                file.Stream?.Dispose();
+
+            foreach (ArcfDirectory subdirectory in directory.Subdirectories)
+                DisposeArcfDirectory(subdirectory);
         }
 
         public void Dispose()
         {
             if (!isDisposed)
             {
-                foreach (Stream stream in files.Values)
-                    stream.Dispose();
+                DisposeArcfDirectory(root);
 
                 isDisposed = true;
             }

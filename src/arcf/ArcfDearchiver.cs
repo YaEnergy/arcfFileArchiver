@@ -2,19 +2,19 @@
 {
     public class ArcfDearchiver : IDisposable
     {
-        public ArcfReader ArcfReader
+        public ArcfDecoder ArcfReader
         {
             get => _arcfReader;
         }
 
-        private ArcfReader _arcfReader;
+        private ArcfDecoder _arcfReader;
 
-        public ArcfDearchiver(ArcfReader arcfReader)
+        public ArcfDearchiver(ArcfDecoder arcfReader)
         {
             _arcfReader = arcfReader;
         }
 
-        public static void Dearchive(ArcfReader arcfReader, string outputPath)
+        public static void Dearchive(ArcfDecoder arcfReader, string outputPath)
         {
             Console.WriteLine($"[ArcfDearchiver] Extracting to: {outputPath}...");
 
@@ -25,7 +25,7 @@
             Console.WriteLine($"[ArcfDearchiver] Finished extracting to: {outputPath}");
         }
 
-        private static void ExtractDirectories(ArcfReader arcfReader, string outputPath)
+        private static void ExtractDirectories(ArcfDecoder arcfReader, string outputPath)
         {
             Console.WriteLine($"[ArcfDearchiver] Getting directories...");
             string[] arcfDirectoryPaths = arcfReader.GetLowestLevelDirectories();
@@ -43,7 +43,7 @@
             }
         }
 
-        private static void ExtractFiles(ArcfReader arcfReader, string outputPath)
+        private static void ExtractFiles(ArcfDecoder arcfReader, string outputPath)
         {
             Console.WriteLine($"[ArcfDearchiver] Getting files...");
             string[] arcfFilePaths = arcfReader.GetFiles();
@@ -55,7 +55,7 @@
             }
         }
 
-        private static void ExtractFile(ArcfReader arcfReader, string arcfFilePath, string outputPath)
+        private static void ExtractFile(ArcfDecoder arcfReader, string arcfFilePath, string outputPath)
         {
             string newPath = Path.TrimEndingDirectorySeparator(outputPath) + @"\" + arcfFilePath;
 #if DEBUG
