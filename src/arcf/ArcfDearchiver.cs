@@ -58,7 +58,7 @@
             Console.WriteLine($"[ArcfDearchiver] Extracting DIRECTORY FILES to: {newPath}...");
 #endif
             foreach (ArcfFile rootFile in directory.Files)
-                ExtractFile(rootFile, arcfReader, outputPath);
+                ExtractFile(rootFile, arcfReader, newPath);
         }
 
         private static void ExtractFile(ArcfFile file, ArcfDecoder arcfReader, string outputPath)
