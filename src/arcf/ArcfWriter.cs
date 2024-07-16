@@ -1,4 +1,5 @@
 ﻿
+using System.IO;
 using System.Xml.Linq;
 
 namespace arcf
@@ -62,6 +63,9 @@ namespace arcf
 
             Console.WriteLine($"[ArcfWriter] Writing FILE {name} to {CurrentDirectory}");
 
+            if (stream.Length > (long)int.MaxValue)
+                throw new Exception($"[ArcfWriter] FILE {name} is too large! ({stream.Length} bytes > {int.MaxValue} bytes (Int32 max)");
+
             //Start file
             writer.Write("\\f");
 
@@ -72,10 +76,17 @@ namespace arcf
             writer.Write(stream.Length);
 
             // data
-            writer.Write("data-test");
-            //stream.CopyTo(_outstream);
+            stream.Position = 0;
 
-            Console.WriteLine($"[ArcfWriter] Writed FILE {name} to {CurrentDirectory}");
+            //Write stream to decoder file stream
+            byte[] buffer = new byte[(int)stream.Length];
+            stream.Read(buffer, 0, (int)stream.Length);
+            _outstream.Write(buffer, 0, buffer.Length);
+
+            stream.Flush();
+            _outstream.Flush();
+
+            Console.WriteLine($"[ArcfWriter] Writed FILE {name} to {CurrentDirectory} ({stream.Length} file bytes)");
         }
 
         public void BeginDirectory(string name)

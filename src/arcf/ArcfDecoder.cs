@@ -61,6 +61,9 @@
 
             Console.WriteLine($"[ArcfDecoder] ARCF VERSION {arcfVersion}");
 
+            if (arcfVersion != READER_ARCF_VERSION)
+                throw new Exception($"[ArcfDecoder] Reader is version {READER_ARCF_VERSION}, but file is version {READER_ARCF_VERSION}");
+
             directoryStack.Push(arcfRoot);
 
             string command = reader.ReadString();
@@ -103,10 +106,12 @@
                             long startDataPosition = _stream.Position;
 
                             //TODO: _stream.Position += dataLength; currently unused because data-test is written instead
-                            reader.ReadString(); //data-test string: ignore
+                            //Skip data
+                            _stream.Position += dataLength;
+                            //reader.ReadString(); //data-test string: ignore
 
                             //TODO: replace last parameter with dataLength when file data is actually being written
-                            ArcfFile file = new(fileName, startDataPosition, _stream.Position - startDataPosition);
+                            ArcfFile file = new(fileName, startDataPosition, dataLength);
                             currentDirectory.Files.Add(file);
 
                             Console.WriteLine($"[ArcfDecoder] Found FILE {fileName} ({dataLength} bytes)");
@@ -140,39 +145,35 @@
             Console.WriteLine("[ArcfDecoder] Verified arcf stream!");
         }
 
-        public string[] GetLowestLevelDirectories()
+        public ArcfDirectory[] GetRootDirectories()
         {
-            //For testing purposes
-            StreamReader streamReader = new(_stream);
-
-            //Skip the first 7 lines
-            for (int i = 0; i < 7; i++)
-                streamReader.ReadLine();
-
-            List<string> lowestLevelDirectories = new();
-
-            while (!streamReader.EndOfStream)
-            {
-                string? directoryPath = streamReader.ReadLine();
-
-                //a line break is placed at the end of the relative folder paths, when this is reached stop searching for folders
-                if (directoryPath == null || directoryPath == "")
-                    break;
-
-                lowestLevelDirectories.Add(directoryPath);
-            }
-
-            return lowestLevelDirectories.ToArray();
+            return arcfRoot.Subdirectories.ToArray();
         }
 
-        public string[] GetFiles()
+        public ArcfFile[] GetRootFiles()
         {
-            throw new NotImplementedException();
+            return arcfRoot.Files.ToArray();
         }
 
-        public Stream OpenFile(string path)
+        public void CopyFileTo(ArcfFile file, Stream stream)
         {
-            throw new NotImplementedException();
+            if (file.DataLength > (long)int.MaxValue)
+                throw new Exception($"[ArcfDecoder] FILE {file.Name} is too large! ({file.DataLength} bytes > {int.MaxValue} bytes (Int32 max)");
+
+            _stream.Position = file.StartDataPosition;
+            stream.Position = 0;
+
+            //Write decoder file stream to stream
+            byte[] buffer = new byte[(int)file.DataLength];
+            _stream.Read(buffer, 0, (int)file.DataLength);
+            stream.Write(buffer, 0, buffer.Length);
+            
+            stream.Flush();
+            _stream.Flush();
+
+#if DEBUG
+            Console.WriteLine($"[ArcfDecoder] Copied FILE {file.Name} to stream ({(int)file.DataLength} bytes)");
+#endif
         }
 
         public void Dispose()

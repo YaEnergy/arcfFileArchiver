@@ -18,59 +18,62 @@
         {
             Console.WriteLine($"[ArcfDearchiver] Extracting to: {outputPath}...");
 
-            ExtractDirectories(arcfReader, outputPath);
-            
-            ExtractFiles(arcfReader, outputPath);
+            //Extract root directories
+#if DEBUG
+            Console.WriteLine($"[ArcfDearchiver] Extracting ROOT DIRECTORIES to: {outputPath}...");
+#endif
+            foreach (ArcfDirectory rootDirectory in arcfReader.GetRootDirectories())
+                ExtractDirectory(rootDirectory, arcfReader, outputPath);
+
+            //Extract root files
+#if DEBUG
+            Console.WriteLine($"[ArcfDearchiver] Extracting ROOT FILES to: {outputPath}...");
+#endif
+            foreach (ArcfFile rootFile in arcfReader.GetRootFiles())
+                ExtractFile(rootFile, arcfReader, outputPath);
 
             Console.WriteLine($"[ArcfDearchiver] Finished extracting to: {outputPath}");
         }
 
-        private static void ExtractDirectories(ArcfDecoder arcfReader, string outputPath)
+        private static void ExtractDirectory(ArcfDirectory directory, ArcfDecoder arcfReader, string outputPath)
         {
-            Console.WriteLine($"[ArcfDearchiver] Getting directories...");
-            string[] arcfDirectoryPaths = arcfReader.GetLowestLevelDirectories();
-
-            Console.WriteLine($"[ArcfDearchiver] Extracting directories to: {outputPath}...");
-            foreach (string arcfDirectoryPath in arcfDirectoryPaths)
-            {
-                string newPath = Path.TrimEndingDirectorySeparator(outputPath) + @"\" + arcfDirectoryPath;
-
+            string newPath = Path.TrimEndingDirectorySeparator(outputPath) + @"\" + directory.Name;
 #if DEBUG
-                Console.WriteLine($"[ArcfDearchiver] Extracting DIRECTORY {arcfDirectoryPath} to: {newPath}");
+            Console.WriteLine($"[ArcfDearchiver] Extracting DIRECTORY {directory.Name} to: {newPath}");
 #endif
 
+            //Create directory if it doesn't exist
+            if (!Directory.Exists(newPath))
                 Directory.CreateDirectory(newPath);
-            }
-        }
 
-        private static void ExtractFiles(ArcfDecoder arcfReader, string outputPath)
-        {
-            Console.WriteLine($"[ArcfDearchiver] Getting files...");
-            string[] arcfFilePaths = arcfReader.GetFiles();
-
-            Console.WriteLine($"[ArcfDearchiver] Extracting files to: {outputPath}...");
-            foreach (string arcfFilePath in arcfFilePaths)
-            {
-                ExtractFile(arcfReader, arcfFilePath, outputPath);
-            }
-        }
-
-        private static void ExtractFile(ArcfDecoder arcfReader, string arcfFilePath, string outputPath)
-        {
-            string newPath = Path.TrimEndingDirectorySeparator(outputPath) + @"\" + arcfFilePath;
+            //Extract subdirectories
 #if DEBUG
-            Console.WriteLine($"[ArcfDearchiver] Extracting FILE {arcfFilePath} to: {newPath}");
+            Console.WriteLine($"[ArcfDearchiver] Extracting SUB DIRECTORIES to: {newPath}...");
+#endif
+            foreach (ArcfDirectory subDirectory in directory.Subdirectories)
+                ExtractDirectory(subDirectory, arcfReader, newPath);
+
+            //Extract directory files
+#if DEBUG
+            Console.WriteLine($"[ArcfDearchiver] Extracting DIRECTORY FILES to: {newPath}...");
+#endif
+            foreach (ArcfFile rootFile in directory.Files)
+                ExtractFile(rootFile, arcfReader, outputPath);
+        }
+
+        private static void ExtractFile(ArcfFile file, ArcfDecoder arcfReader, string outputPath)
+        {
+            string newPath = Path.TrimEndingDirectorySeparator(outputPath) + @"\" + file.Name;
+#if DEBUG
+            Console.WriteLine($"[ArcfDearchiver] Extracting FILE {file.Name} to: {newPath}");
 #endif
 
             FileStream fileStream = File.Create(newPath);
 
-            Stream arcfFileStream = arcfReader.OpenFile(arcfFilePath);
+            arcfReader.CopyFileTo(file, fileStream);
 
-            arcfFileStream.CopyTo(fileStream);
-
-            arcfFileStream.Dispose();
-
-            fileStream.Close();
+            fileStream.Flush();
+            fileStream.Dispose();
         }
 
         public void Dearchive(string outputPath)
