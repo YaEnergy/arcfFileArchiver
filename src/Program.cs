@@ -49,19 +49,12 @@ namespace arcfFileArchiver
             {
                 case "read":
                     {
-                        int level = 1;
-
-                        switch (parameters.Length)
+                        int level = parameters.Length switch
                         {
-                            case 0:
-                                throw new ArgumentException("[Read] No archive file path given!");
-                            case 1:
-                                level = 1;
-                                break;
-                            default:
-                                level = int.Parse(parameters[1]);
-                                break;
-                        }
+                            0 => throw new ArgumentException("[Read] No archive file path given!"),
+                            1 => 1, // level 1
+                            _ => int.Parse(parameters[1]), //default
+                        };
 
                         ReadCommand(parameters[0], level);
 
@@ -201,7 +194,7 @@ namespace arcfFileArchiver
             Console.WriteLine($"[Read] Checking if ARCHIVE FILE PATH: {archivePath} exists...");
             if (!File.Exists(archivePath))
             {
-                throw new ArgumentException("[Dearchive] File/Directory does not exist!: {path}");
+                throw new ArgumentException($"[Read] File does not exist!: {archivePath}");
             }
 
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -396,13 +389,16 @@ namespace arcfFileArchiver
             Console.WriteLine($"[Dearchive] Checking if ARCHIVE FILE PATH: {decompressPath} exists...");
             if (!File.Exists(decompressPath))
             {
-                throw new ArgumentException("[Dearchive] File/Directory does not exist!: {path}");
+                throw new ArgumentException($"[Dearchive] File does not exist!: {decompressPath}");
             }
 
             Console.WriteLine($"[Dearchive] Opening {decompressPath} for reading...");
-            ArcfDecoder arcfReader = new(File.OpenRead(decompressPath));
+            ArcfDecoder arcfDecoder = new(File.OpenRead(decompressPath));
 
-            //TODO: Write some info about the archive file here
+            Console.WriteLine($"\n|| ARCHIVE INFO ||\n");
+            Console.WriteLine($"{arcfDecoder.NumFiles} files");
+            Console.WriteLine($"{arcfDecoder.NumDirectories} directories");
+            Console.WriteLine($"{TextFormatBytes(arcfDecoder.ArchiveSizeBytes)} | {arcfDecoder.ArchiveSizeBytes} bytes");
 
             Console.WriteLine("[Dearchive] Start dearchival? Y/N");
             string? dearchiveAnswer = Console.ReadLine();
@@ -437,7 +433,7 @@ namespace arcfFileArchiver
                 Directory.CreateDirectory(outputPath);
             }
 
-            ArcfDearchiver arcfDearchiver = new(arcfReader);
+            ArcfDearchiver arcfDearchiver = new(arcfDecoder);
 
             Console.WriteLine($"[Dearchive] Starting dearchival to DIRECTORY: {outputPath}...\n");
 

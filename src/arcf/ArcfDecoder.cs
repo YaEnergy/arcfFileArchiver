@@ -84,6 +84,8 @@
 
             directoryStack.Push(arcfRoot);
 
+            Console.WriteLine("[ArcfDecoder] Reading arcf files & directories...");
+
             string command = reader.ReadString();
 
             ArcfDirectory currentDirectory = arcfRoot;
@@ -106,7 +108,9 @@
 
                             currentDirectory = newDirectory;
 
+#if DEBUG
                             Console.WriteLine($"[ArcfDecoder] Start DIRECTORY {newDirectoryName}");
+#endif
                             break;
                         }
                     //End directory
@@ -115,7 +119,9 @@
                             ArcfDirectory endingDirectory = directoryStack.Pop();
                             currentDirectory = directoryStack.Peek();
 
+#if DEBUG
                             Console.WriteLine($"[ArcfDecoder] End DIRECTORY {endingDirectory.Name}, back to DIRECTORY {currentDirectory.Name}");
+#endif
                             break;
                         }
                     //Start file
@@ -136,7 +142,9 @@
                             ArcfFile file = new(fileName, startDataPosition, dataLength);
                             currentDirectory.Files.Add(file);
 
+#if DEBUG
                             Console.WriteLine($"[ArcfDecoder] Found FILE {fileName} ({dataLength} bytes)");
+#endif
                             break;
                         }
                 }
@@ -146,6 +154,8 @@
             }
 
             Console.WriteLine("[ArcfDecoder] Reached end of archive file (\\eaf)");
+
+            Console.WriteLine("[ArcfDecoder] Finished reading archive file");
         }
 
         private void VerifyStream()
