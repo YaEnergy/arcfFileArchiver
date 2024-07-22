@@ -169,21 +169,33 @@ namespace arcfFileArchiver
 
         private static string TextFormatBytes(long bytes)
         {
-            const long KB_BYTES = 1024L;
-            const long MB_BYTES = KB_BYTES * 1024L;
-            const long GB_BYTES = MB_BYTES * 1024L;
-            const long TB_BYTES = GB_BYTES * 1024L;
+            const double KB_BYTES = 1024.0;
+            const double MB_BYTES = KB_BYTES * 1024.0;
+            const double GB_BYTES = MB_BYTES * 1024.0;
+            const double TB_BYTES = GB_BYTES * 1024.0;
+
+            const int NUM_FRACTIONAL_DIGITS = 3;
 
             if (bytes < 10 * KB_BYTES)
                 return $"{bytes} bytes";
             else if (bytes < 10 * MB_BYTES)
-                return $"{bytes / KB_BYTES} kb";
+                return $"{double.Round((double)bytes / KB_BYTES, NUM_FRACTIONAL_DIGITS)} kb";
             else if (bytes < 10 * GB_BYTES)
-                return $"{bytes / MB_BYTES} mb";
+                return $"{double.Round((double)bytes / MB_BYTES, NUM_FRACTIONAL_DIGITS)} mb";
             else if (bytes < 10 * TB_BYTES)
-                return $"{bytes / GB_BYTES} gb";
+                return $"{double.Round((double)bytes / GB_BYTES, NUM_FRACTIONAL_DIGITS)} gb";
             else
-                return $"{bytes / TB_BYTES} tb";
+                return $"{double.Round((double)bytes / TB_BYTES, NUM_FRACTIONAL_DIGITS)} tb";
+        }
+
+        private static void WriteArchiveInfo(ArcfDecoder arcfDecoder)
+        {
+            Console.WriteLine($"\n|| ARCHIVE INFO ||\n");
+            Console.WriteLine($"# Files: {arcfDecoder.NumFiles}");
+            Console.WriteLine($"# Directories: {arcfDecoder.NumDirectories}");
+            Console.WriteLine($"Archived size: {TextFormatBytes(arcfDecoder.ArchiveSizeBytes)} | {arcfDecoder.ArchiveSizeBytes} bytes");
+            Console.WriteLine($"Archive size: {TextFormatBytes(arcfDecoder.Stream.Length)} | {arcfDecoder.Stream.Length} bytes (Archive file)");
+            Console.WriteLine($"Compression %: {double.Round(((double)arcfDecoder.ArchiveSizeBytes / (double)arcfDecoder.Stream.Length - 1.0) * 100.0, 3)}% ({TextFormatBytes(arcfDecoder.ArchiveSizeBytes - arcfDecoder.Stream.Length)} smaller | {arcfDecoder.ArchiveSizeBytes - arcfDecoder.Stream.Length} bytes smaller)");
         }
 
         private static void ReadCommand(string archivePath, int level = 1)
@@ -202,10 +214,7 @@ namespace arcfFileArchiver
             Console.WriteLine($"[Read] Opening {archivePath} for reading...");
             ArcfDecoder arcfDecoder = new(File.OpenRead(archivePath));
 
-            Console.WriteLine($"\n|| ARCHIVE INFO ||\n");
-            Console.WriteLine($"{arcfDecoder.NumFiles} files");
-            Console.WriteLine($"{arcfDecoder.NumDirectories} directories");
-            Console.WriteLine($"{TextFormatBytes(arcfDecoder.ArchiveSizeBytes)} | {arcfDecoder.ArchiveSizeBytes} bytes");
+            WriteArchiveInfo(arcfDecoder);
 
             if (level >= 2)
             {
@@ -395,10 +404,7 @@ namespace arcfFileArchiver
             Console.WriteLine($"[Dearchive] Opening {decompressPath} for reading...");
             ArcfDecoder arcfDecoder = new(File.OpenRead(decompressPath));
 
-            Console.WriteLine($"\n|| ARCHIVE INFO ||\n");
-            Console.WriteLine($"{arcfDecoder.NumFiles} files");
-            Console.WriteLine($"{arcfDecoder.NumDirectories} directories");
-            Console.WriteLine($"{TextFormatBytes(arcfDecoder.ArchiveSizeBytes)} | {arcfDecoder.ArchiveSizeBytes} bytes");
+            WriteArchiveInfo(arcfDecoder);
 
             Console.WriteLine("[Dearchive] Start dearchival? Y/N");
             string? dearchiveAnswer = Console.ReadLine();
