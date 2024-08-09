@@ -1,6 +1,4 @@
-﻿
-using System.IO;
-using System.Xml.Linq;
+﻿using System.IO.Compression;
 
 namespace arcf
 {
@@ -21,12 +19,15 @@ namespace arcf
 
         // followed by:
         // string name - file name
-        // long length - length of the data in bytes
+        // long fullLength - length of the data in bytes
+        // long deflatedLength - length of the DEFLATED data in bytes (stored in file)
         // data
 
         // \ed - end directory
 
         // \eaf - end archive file
+
+        const uint WRITER_ARCF_VERSION = 2;
 
         public Stream Stream
         {
@@ -41,7 +42,7 @@ namespace arcf
         private readonly Stream _outstream;
         private readonly BinaryWriter writer;
 
-        private Stack<string> directoryStack = new();
+        private readonly Stack<string> directoryStack = new();
 
         private bool isDisposed = false;
 
@@ -72,21 +73,37 @@ namespace arcf
             // string name - file name
             writer.Write(name);
 
-            // long length - length of the data in bytes
+            // long fullLength - length of the data in bytes
             writer.Write(stream.Length);
 
-            // data
+            //DEFLATE (compress) stream
+            MemoryStream deflatedStream = new(); //contains compressed data
+            DeflateStream deflateStream = new(deflatedStream, CompressionLevel.Optimal, true);
             stream.Position = 0;
+            stream.CopyTo(deflateStream);
 
-            //Write stream to decoder file stream
-            byte[] buffer = new byte[(int)stream.Length];
-            stream.Read(buffer, 0, (int)stream.Length);
+            deflatedStream.Flush();
+            stream.Flush();
+
+            deflateStream.Dispose();
+
+            // long deflatedLength - length of the DEFLATED data in bytes
+            long deflatedLength = deflatedStream.Length;
+            writer.Write(deflatedLength);
+
+            // data
+            //Write deflated stream to decoder file stream
+            deflatedStream.Position = 0;
+            byte[] buffer = new byte[(int)deflatedStream.Length];
+            deflatedStream.Read(buffer, 0, (int)deflatedStream.Length);
             _outstream.Write(buffer, 0, buffer.Length);
 
-            stream.Flush();
+            deflatedStream.Flush();
             _outstream.Flush();
 
-            Console.WriteLine($"[ArcfWriter] Writed FILE {name} to {CurrentDirectory} ({stream.Length} file bytes)");
+            deflateStream.Dispose();
+
+            Console.WriteLine($"[ArcfWriter] Writed FILE {name} to {CurrentDirectory} ({stream.Length} file bytes -> {deflatedLength} deflated file bytes)");
         }
 
         public void BeginDirectory(string name)
@@ -139,7 +156,7 @@ namespace arcf
             writer.Write("ARCF_EXT");
 
             //uint32 version - Arcf file version number
-            writer.Write(1u);
+            writer.Write(WRITER_ARCF_VERSION);
         }
 
         public void Close()

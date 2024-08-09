@@ -1,4 +1,6 @@
-﻿namespace arcf
+﻿using System.IO.Compression;
+
+namespace arcf
 {
     public class ArcfDecoder : IDisposable
     {
@@ -17,14 +19,15 @@
 
         // followed by:
         // string name - file name
-        // long length - length of the data in bytes
+        // long fullLength - length of the data in bytes
+        // long deflatedLength - length of the DEFLATED data in bytes (stored in file)
         // data
 
         // \ed - end directory
 
         // \eaf - end archive file
 
-        const uint READER_ARCF_VERSION = 1;
+        const uint READER_ARCF_VERSION = 2;
 
         public Stream Stream
         {
@@ -80,7 +83,7 @@
             Console.WriteLine($"[ArcfDecoder] ARCF VERSION {arcfVersion}");
 
             if (arcfVersion != READER_ARCF_VERSION)
-                throw new Exception($"[ArcfDecoder] Reader is version {READER_ARCF_VERSION}, but file is version {READER_ARCF_VERSION}");
+                throw new Exception($"[ArcfDecoder] Reader is version {READER_ARCF_VERSION}, but file is version {arcfVersion}");
 
             directoryStack.Push(arcfRoot);
 
@@ -134,12 +137,14 @@
                             long dataLength = reader.ReadInt64();
                             _archiveSizeBytes += dataLength;
 
+                            long deflatedDataLength = reader.ReadInt64();
+
                             long startDataPosition = _stream.Position;
 
                             //Skip data
-                            _stream.Position += dataLength;
+                            _stream.Position += deflatedDataLength;
 
-                            ArcfFile file = new(fileName, startDataPosition, dataLength);
+                            ArcfFile file = new(fileName, startDataPosition, deflatedDataLength);
                             currentDirectory.Files.Add(file);
 
 #if DEBUG
@@ -189,22 +194,39 @@
 
         public void CopyFileTo(ArcfFile file, Stream stream)
         {
-            if (file.DataLength > (long)int.MaxValue)
-                throw new Exception($"[ArcfDecoder] FILE {file.Name} is too large! ({file.DataLength} bytes > {int.MaxValue} bytes (Int32 max)");
+            if (file.DeflatedDataLength > (long)int.MaxValue)
+                throw new Exception($"[ArcfDecoder] FILE {file.Name} is too large! ({file.DeflatedDataLength} bytes > {int.MaxValue} bytes (Int32 max)");
 
             _stream.Position = file.StartDataPosition;
             stream.Position = 0;
 
-            //Write decoder file stream to stream
-            byte[] buffer = new byte[(int)file.DataLength];
-            _stream.Read(buffer, 0, (int)file.DataLength);
-            stream.Write(buffer, 0, buffer.Length);
-            
+            MemoryStream deflatedStream = new(); //Contains compressed data
+
+            //Write decoder file stream (deflated data) to deflated stream
+            byte[] buffer = new byte[(int)file.DeflatedDataLength];
+            _stream.Read(buffer, 0, (int)file.DeflatedDataLength);
+            deflatedStream.Write(buffer, 0, buffer.Length);
+            deflatedStream.Flush();
+
+            //Go back to the start
+            deflatedStream.Position = 0;
+
+            //ENFLATE deflated stream
+            DeflateStream enflateStream = new(deflatedStream, CompressionMode.Decompress, false);
+
+            //Copy uncompressed data to stream
+            enflateStream.CopyTo(stream);
+
+            deflatedStream.Flush();
+            enflateStream.Flush();
+
+            enflateStream.Dispose();
+
             stream.Flush();
             _stream.Flush();
 
 #if DEBUG
-            Console.WriteLine($"[ArcfDecoder] Copied FILE {file.Name} to stream ({(int)file.DataLength} bytes)");
+            Console.WriteLine($"[ArcfDecoder] Copied FILE {file.Name} to stream ({(int)file.DeflatedDataLength} deflated bytes -> {(int)stream.Length} uncompressed bytes)");
 #endif
         }
 

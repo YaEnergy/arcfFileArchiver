@@ -1,7 +1,5 @@
 ﻿using arcf;
 using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
 
 namespace arcfFileArchiver
 {
@@ -194,7 +192,7 @@ namespace arcfFileArchiver
             Console.WriteLine($"# Files: {arcfDecoder.NumFiles}");
             Console.WriteLine($"# Directories: {arcfDecoder.NumDirectories}");
             Console.WriteLine($"Archived size: {TextFormatBytes(arcfDecoder.ArchiveSizeBytes)} | {arcfDecoder.ArchiveSizeBytes} bytes");
-            Console.WriteLine($"Archive size: {TextFormatBytes(arcfDecoder.Stream.Length)} | {arcfDecoder.Stream.Length} bytes (Archive file)");
+            Console.WriteLine($"Archive file size: {TextFormatBytes(arcfDecoder.Stream.Length)} | {arcfDecoder.Stream.Length} bytes");
             Console.WriteLine($"Compression %: {double.Round(((double)arcfDecoder.ArchiveSizeBytes / (double)arcfDecoder.Stream.Length - 1.0) * 100.0, 3)}% ({TextFormatBytes(arcfDecoder.ArchiveSizeBytes - arcfDecoder.Stream.Length)} smaller | {arcfDecoder.ArchiveSizeBytes - arcfDecoder.Stream.Length} bytes smaller)");
         }
 
