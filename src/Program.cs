@@ -43,7 +43,7 @@ namespace arcfFileArchiver
 
         private static void HandleCommand(string command, string[] parameters)
         {
-            switch (command)
+            switch (command.ToLower())
             {
                 case "read":
                     {
@@ -193,7 +193,7 @@ namespace arcfFileArchiver
             Console.WriteLine($"# Directories: {arcfDecoder.NumDirectories}");
             Console.WriteLine($"Archived size: {TextFormatBytes(arcfDecoder.ArchiveSizeBytes)} | {arcfDecoder.ArchiveSizeBytes} bytes");
             Console.WriteLine($"Archive file size: {TextFormatBytes(arcfDecoder.Stream.Length)} | {arcfDecoder.Stream.Length} bytes");
-            Console.WriteLine($"Compression %: {double.Round(((double)arcfDecoder.ArchiveSizeBytes / (double)arcfDecoder.Stream.Length - 1.0) * 100.0, 3)}% ({TextFormatBytes(arcfDecoder.ArchiveSizeBytes - arcfDecoder.Stream.Length)} smaller | {arcfDecoder.ArchiveSizeBytes - arcfDecoder.Stream.Length} bytes smaller)");
+            Console.WriteLine($"Compression %: {double.Round(((double)arcfDecoder.Stream.Length / (double)arcfDecoder.ArchiveSizeBytes) * 100.0, 3)}% ({TextFormatBytes(arcfDecoder.ArchiveSizeBytes - arcfDecoder.Stream.Length)} smaller | {arcfDecoder.ArchiveSizeBytes - arcfDecoder.Stream.Length} bytes smaller)");
         }
 
         private static void ReadCommand(string archivePath, int level = 1)
