@@ -139,8 +139,6 @@ namespace arcf
 
                             long deflatedDataLength = reader.ReadInt64();
 
-                            long deflatedDataLength = reader.ReadInt64();
-
                             long startDataPosition = _stream.Position;
 
                             //Skip data

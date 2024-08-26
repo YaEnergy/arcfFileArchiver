@@ -51,6 +51,7 @@ namespace arcf
 
             FileStream fileStream = file.OpenRead();
             _arcfWriter.WriteFileStream(file.Name, fileStream);
+            fileStream.Dispose();
         }
 
         public void AddFile(string filePath)
